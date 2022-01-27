@@ -10,19 +10,20 @@ library(NMF)
 replw <- function(str) {str_replace(str, 'V', 'W')}
 replh <- function(str) {str_replace(str, 'V', 'H')}
 
-tidy_nmf <- function(df, n, val, h = c(), w = c()){
+tidy_inmf <- function(df, n, val, h = c(), w = c()){
+  df <- ungroup(df)
   hrowname <- select(df, h)
   wcolname <- select(df, w)
   usecols <- c(h, w, val)
   id_cols <- setdiff(names(df), usecols)
-  
+
   mat <- df %>%
+
     pivot_wider(names_from = h, values_from = val) %>%
-    select(where(is.numeric), -id_cols) %>%
+    select(where(is.numeric), -names(wcolname), -id_cols) %>%
     as.matrix()
-  
-  nm  <- nmf(mat, n) 
-  
+
+  nm  <- iterate_nmf(mat, n)
   H <- nm %>%
     pluck("fit") %>%
     pluck("H") %>%
@@ -31,7 +32,7 @@ tidy_nmf <- function(df, n, val, h = c(), w = c()){
     rename_with(replh) %>%
     cbind(hrowname) %>%
     pivot_longer(starts_with("H"), names_to = "H", values_to = "Hvalue")
-  W <- nm %>% 
+  W <- nm %>%
     pluck("fit") %>%
     pluck("W") %>%
     as_tibble() %>%
@@ -57,11 +58,15 @@ df <- df %>%
 
 h <- c('TIME', 'AXIS')
 w <- 'FILE'
-tn <- tidy_nmf(df, 2, h = h, w = w, val = 'COUNTS')
+tn <- tidy_inmf(df, 2, h = h, w = w, val = 'COUNTS')
 
+ggplot(tn, aes(x = TIME, y = Hvalue, color = W, shape = FILE))+
+  geom_line()+
+  facet_grid(FILE~AXIS)
 
-
-
+ggplot(tn, aes(x = TIME, y = Wvalue, color = W, shape = FILE))+
+  geom_line()+
+  facet_grid(FILE~AXIS)
 
 
 
